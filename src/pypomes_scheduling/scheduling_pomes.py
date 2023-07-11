@@ -39,11 +39,11 @@ def scheduler_create(errors: list[str], timezone: pytz.BaseTzInfo,
     return result
 
 
-# jobs: callable function, job id, job name, CRON expression
-def scheduler_schedule(errors: list[str], jobs: list[tuple[callable, str, str, str]], start: datetime) -> int:
+def scheduler_schedule(errors: list[str],
+                       jobs: list[tuple[callable, str, str, tuple, str]], start: datetime) -> int:
     """
     Schedule the jobs in *jobs*, starting at the given *start*. Each element in the job list is a *tuple* with
-    the corresponding job data: *(callable function, job id, job name, CRON expression)*.
+    the corresponding job data: *(callable function, job id, job name, job arguments, CRON expression)*.
 
     :param errors: Resulting errors, if any
     :param jobs: List of tuples with jobs to schedule
@@ -58,13 +58,13 @@ def scheduler_schedule(errors: list[str], jobs: list[tuple[callable, str, str, s
     for job in jobs:
 
         # is it a valid CRON expression ?
-        if re.search(__REGEX_VERIFY_CRON, job[3]) is None:
+        if re.search(__REGEX_VERIFY_CRON, job[4]) is None:
             # no, report the error
-            errors.append(f"Invalid CRON expression: '{job[3]}'")
+            errors.append(f"Invalid CRON expression: '{job[4]}'")
         else:
             # yes, proceed with the scheduling
             try:
-                __scheduler.schedule_job(job[0], job[1], job[2], job[3], start)
+                __scheduler.schedule_job(job[0], job[1], job[2], job[4], job[3], start)
                 result += 1
             except Exception as e:
                 errors.append(f"Error scheduling the job '{job[2]}', id '{job[1]}', "

@@ -7,7 +7,10 @@ import threading
 
 
 class __ThreadedScheduler(threading.Thread):
-
+    """
+    A scalable implementation of *APScheduler*'s *BlockingScheduler*, running as single or multiple instances,
+    each on its own thread.
+    """
     _scheduler: BlockingScheduler
     _logger: logging.Logger
     _stopped: bool
@@ -27,20 +30,20 @@ class __ThreadedScheduler(threading.Thread):
 
     def run(self):
 
-        # permanece no laço até que 'stop()' seja invocado
+        # stay in loop until 'stop()' is invoked
         while not self._stopped:
             if self._logger is not None:
                 self._logger.info("Started")
 
-            # inicia o agendador, bloqueando até que ele seja interrompido
+            # start the scheduler, blocking until it is interrupted
             self._scheduler.start()
 
         self._scheduler.shutdown()
         if self._logger is not None:
             self._logger.info("Finished")
 
-    def schedule_job(self, job: callable, job_id: str,
-                     job_name: str, cron_expr: str, start: datetime = None):
+    def schedule_job(self, job: callable, job_id: str, job_name: str,
+                     cron_expr: str, job_args: tuple = None, start: datetime = None):
 
         # approximately, convert symbols to CRON expression
         expr: str
@@ -73,6 +76,7 @@ class __ThreadedScheduler(threading.Thread):
                                   start_date=start)
         self._scheduler.add_job(func=job,
                                 trigger=aps_trigger,
+                                args=job_args,
                                 id=job_id,
                                 name=job_name)
         if self._logger is not None:

@@ -7,5 +7,5 @@ __all__ = [
     scheduler_create, scheduler_schedule, scheduler_start, scheduler_stop
 ]
 
-__version__ = "0.1.2"
-__version_info__ = (0, 1, 2)
+__version__ = "0.1.3"
+__version_info__ = (0, 1, 3)
