@@ -8,8 +8,9 @@ import threading
 
 class __ThreadedScheduler(threading.Thread):
     """
-    A scalable implementation of *APScheduler*'s *BlockingScheduler*, running as single or multiple instances,
-    each on its own thread.
+    A scalable implementation of *APScheduler*'s *BlockingScheduler*.
+
+    This implementation may run as single or multiple instances, each on its own thread.
     """
     _scheduler: BlockingScheduler
     _logger: logging.Logger

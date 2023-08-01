@@ -11,5 +11,5 @@ __all__ = [
     scheduler_add_job, scheduler_add_jobs
 ]
 
-__version__ = "0.2.1"
-__version_info__ = (0, 2, 1)
+__version__ = "0.2.2"
+__version_info__ = (0, 2, 2)
