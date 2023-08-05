@@ -6,7 +6,7 @@ import pytz
 import threading
 
 
-class __ThreadedScheduler(threading.Thread):
+class __ThreadedScheduler(threading.Thread):  # noqa: N801
     """
     A scalable implementation of *APScheduler*'s *BlockingScheduler*.
 
@@ -16,7 +16,7 @@ class __ThreadedScheduler(threading.Thread):
     _logger: logging.Logger
     _stopped: bool
 
-    def __init__(self, timezone: pytz.timezone, retry_interval: int, logger: logging.Logger = None):
+    def __init__(self, timezone: pytz.timezone, retry_interval: int, logger: logging.Logger = None) -> None:
 
         threading.Thread.__init__(self)
 
@@ -29,10 +29,8 @@ class __ThreadedScheduler(threading.Thread):
             self._logger.info("Instanced, with timezone "
                               f"'{timezone}' and retry interval '{retry_interval}'")
 
-    def run(self):
-        """
-        Start the scheduler in its own thread.
-        """
+    def run(self) -> None:
+        """Start the scheduler in its own thread."""
         # stay in loop until 'stop()' is invoked
         while not self._stopped:
             if self._logger is not None:
@@ -46,7 +44,7 @@ class __ThreadedScheduler(threading.Thread):
             self._logger.info("Finished")
 
     def schedule_job(self, job: callable, job_id: str, job_name: str, job_cron: str = None,
-                     job_start: datetime = None, job_args: tuple = None, job_kwargs: dict = None):
+                     job_start: datetime = None, job_args: tuple = None, job_kwargs: dict = None) -> None:
         """
         Schedule the given *job*, with the given parameters.
 
@@ -85,7 +83,7 @@ class __ThreadedScheduler(threading.Thread):
         if cron_expr is not None:
             # yes, build the trigger: <minute> <hour> <day-of-month> <month> <day-of-week>
             vals: list[str] = cron_expr.split()
-            vals = [None if val == '?' else val for val in vals]
+            vals = [None if val == "?" else val for val in vals]
             aps_trigger = CronTrigger(minute=vals[0],
                                       hour=vals[1],
                                       day=vals[2],
@@ -101,9 +99,9 @@ class __ThreadedScheduler(threading.Thread):
         if self._logger is not None:
             self._logger.info(f"Job '{job_name}' scheduled, with CRON '{job_cron}'")
 
-    def stop(self):
+    def stop(self) -> None:
         """
-        Stop the scheduler.
+          Stop the scheduler.
         """
         if self._logger is not None:
             self._logger.info("Finishing...")

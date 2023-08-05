@@ -9,14 +9,16 @@ from .__threaded_scheduler import __ThreadedScheduler
 
 __DEFAULT_BADGE: Final[str] = "__default__"
 
-__REGEX_VERIFY_CRON: Final[str] = "/(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|" \
-                                  "(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,7})"
+__REGEX_VERIFY_CRON: Final[str] = (
+    "/(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|"
+    "(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,7})"
+)
 
 # dict holding the schedulers created:
-#   { <badge-1>: <scheduler-instance-1>,
+#   <{ <badge-1>: <scheduler-instance-1>,
 #     ...
 #     <badge-n>: <scheduler-instance-n>
-#   }
+#   }>
 __schedulers: dict = {}
 
 
@@ -52,7 +54,7 @@ def scheduler_create(errors: list[str], timezone: pytz.BaseTzInfo,
     return result
 
 
-def scheduler_destroy(badge: str = None):
+def scheduler_destroy(badge: str = None) -> None:
     """
     Destroy the scheduler identified by *badge*. *Noop* if the scheduler does not exist.
 
@@ -67,7 +69,7 @@ def scheduler_destroy(badge: str = None):
         __schedulers.pop(curr_badge)
 
 
-def scheduler_start(errors: list[str], badge: str = None):
+def scheduler_start(errors: list[str], badge: str = None) -> bool:
     """
     Start the scheduler.
 
@@ -93,7 +95,7 @@ def scheduler_start(errors: list[str], badge: str = None):
     return result
 
 
-def scheduler_stop(errors: list[str], badge: str = None):
+def scheduler_stop(errors: list[str], badge: str = None) -> bool:
     """
     Stop the scheduler.
 
@@ -119,8 +121,9 @@ def scheduler_add_job(errors: list[str], job: callable, job_id: str, job_name: s
                       job_cron: str = None, job_start: datetime = None,
                       job_args: tuple = None, job_kwargs: dict = None, badge: str = None) -> bool:
     """
-    Schedule the job identified as *job_id* and named as *job_name*,
-    with the *CRON* expression *job_cron*, starting at the timestamp *job_start*.
+    Schedule the job identified as *job_id* and named as *job_name*.
+
+    The scheduling is performed with the *CRON* expression *job_cron*, starting at the timestamp *job_start*.
     Positional arguments for the scheduled job may be provided in *job_args*.
     Named arguments for the scheduled job may be provided in *job_kwargs*.
     Return *True* if the scheduling was successful.
@@ -155,6 +158,7 @@ def scheduler_add_jobs(errors: list[str],
                        badge: str = None) -> int:
     """
     Schedule the jobs described in *jobs*, starting at the given *start*.
+
     Each element in the job list is a *tuple* with the corresponding job data:
     *(callable function, job id, job name, CRON expression, start timestamp, job args, job kwargs)*.
     Only the first three data items are required.
@@ -196,13 +200,10 @@ def __get_scheduler(errors: list[str], badge: str, must_exist: bool = True) -> _
     :param must_exist: True if scheduler must exist
     :return: the scheduler retrieved, or None otherwise
     """
-    
     curr_badge = badge or __DEFAULT_BADGE
-    result: __ThreadedScheduler = __schedulers[curr_badge]
+    result: __ThreadedScheduler = __schedulers.get(curr_badge)
     if must_exist and result is None:
         errors.append(f"Job scheduler '{curr_badge}' has not been created")
-    elif not must_exist and result is not None:
-        errors.append(f"Job scheduler '{curr_badge}' has already been created")
         
     return result
 
@@ -212,8 +213,9 @@ def __scheduler_add_job(errors: list[str], scheduler: __ThreadedScheduler,
                         job_cron: str = None, job_start: datetime = None,
                         job_args: tuple = None, job_kwargs: dict = None) -> bool:
     """
-    Use *scheduler* to schedule the job identified as *job_id* and named as *job_name*,
-    with the *CRON* expression *job_cron*, starting at the timestamp *job_start*.
+    Use *scheduler* to schedule the job identified as *job_id* and named as *job_name*.
+
+    The scheduling is performed with the *CRON* expression *job_cron*, starting at the timestamp *job_start*.
     Positional arguments for the scheduled job may be provided in *job_args*.
     Named arguments for the scheduled job may be provided in *job_kwargs*.
     Return *True* if the scheduling was successful.
