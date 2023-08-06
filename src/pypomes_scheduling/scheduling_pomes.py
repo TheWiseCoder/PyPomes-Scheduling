@@ -5,7 +5,7 @@ import logging
 import pytz
 import re
 import sys
-from .__threaded_scheduler import __ThreadedScheduler
+from .threaded_scheduler import _ThreadedScheduler
 
 __DEFAULT_BADGE: Final[str] = "__default__"
 
@@ -25,7 +25,9 @@ __schedulers: dict = {}
 def scheduler_create(errors: list[str], timezone: pytz.BaseTzInfo,
                      retry_interval: int, logger: logging.Logger = None, badge: str = None) -> bool:
     """
-    Create the threaded job scheduler. This is a wrapper around the package *APScheduler*.
+    Create the threaded job scheduler.
+
+    This is a wrapper around the package *APScheduler*.
 
     :param errors: incidental errors
     :param timezone: the timezone to be used
@@ -44,7 +46,7 @@ def scheduler_create(errors: list[str], timezone: pytz.BaseTzInfo,
     if __get_scheduler(errors, curr_badge, False) is None:
         # no, create it
         try:
-            __schedulers[curr_badge] = __ThreadedScheduler(timezone, retry_interval, logger)
+            __schedulers[curr_badge] = _ThreadedScheduler(timezone, retry_interval, logger)
             __schedulers[curr_badge].daemon = True
             result = True
         except Exception as e:
@@ -62,10 +64,12 @@ def scheduler_destroy(badge: str = None) -> None:
     """
     # define the badge
     curr_badge: str = badge or __DEFAULT_BADGE
+    scheduler: _ThreadedScheduler = __schedulers.get(curr_badge)
 
     # does the scheduler exist ?
-    if __schedulers.get(curr_badge) is not None:
-        # yes, discard it
+    if scheduler is not None:
+        # yes, stop and discard it
+        scheduler.stop()
         __schedulers.pop(curr_badge)
 
 
@@ -81,7 +85,7 @@ def scheduler_start(errors: list[str], badge: str = None) -> bool:
     result: bool = False
 
     # retrieve the scheduler
-    scheduler: __ThreadedScheduler = __get_scheduler(errors, badge)
+    scheduler: _ThreadedScheduler = __get_scheduler(errors, badge)
 
     # proceed, if the scheduler was retrieved
     if scheduler is not None:
@@ -107,7 +111,7 @@ def scheduler_stop(errors: list[str], badge: str = None) -> bool:
     result: bool = False
 
     # retrieve the scheduler
-    scheduler: __ThreadedScheduler = __get_scheduler(errors, badge)
+    scheduler: _ThreadedScheduler = __get_scheduler(errors, badge)
 
     # proceed, if the scheduler was retrieved
     if scheduler is not None:
@@ -143,7 +147,7 @@ def scheduler_add_job(errors: list[str], job: callable, job_id: str, job_name: s
     result: bool = False
     
     # retrieve the scheduler
-    scheduler: __ThreadedScheduler = __get_scheduler(errors, badge)
+    scheduler: _ThreadedScheduler = __get_scheduler(errors, badge)
     
     # proceed, if the scheduler was retrieved
     if scheduler is not None:
@@ -172,7 +176,7 @@ def scheduler_add_jobs(errors: list[str],
     result: int = 0
 
     # retrieve the scheduler
-    scheduler: __ThreadedScheduler = __get_scheduler(errors, badge)
+    scheduler: _ThreadedScheduler = __get_scheduler(errors, badge)
     
     # proceed, if the scheduler was retrieved
     if scheduler is not None:
@@ -191,7 +195,7 @@ def scheduler_add_jobs(errors: list[str],
     return result
 
 
-def __get_scheduler(errors: list[str], badge: str, must_exist: bool = True) -> __ThreadedScheduler:
+def __get_scheduler(errors: list[str], badge: str, must_exist: bool = True) -> _ThreadedScheduler:
     """
     Retrieve the scheduler identified by *badge*.
 
@@ -201,14 +205,14 @@ def __get_scheduler(errors: list[str], badge: str, must_exist: bool = True) -> _
     :return: the scheduler retrieved, or None otherwise
     """
     curr_badge = badge or __DEFAULT_BADGE
-    result: __ThreadedScheduler = __schedulers.get(curr_badge)
+    result: _ThreadedScheduler = __schedulers.get(curr_badge)
     if must_exist and result is None:
         errors.append(f"Job scheduler '{curr_badge}' has not been created")
         
     return result
 
 
-def __scheduler_add_job(errors: list[str], scheduler: __ThreadedScheduler,
+def __scheduler_add_job(errors: list[str], scheduler: _ThreadedScheduler,
                         job: callable, job_id: str, job_name: str,
                         job_cron: str = None, job_start: datetime = None,
                         job_args: tuple = None, job_kwargs: dict = None) -> bool:

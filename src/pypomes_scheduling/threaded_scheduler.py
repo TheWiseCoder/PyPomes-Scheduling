@@ -6,7 +6,7 @@ import pytz
 import threading
 
 
-class __ThreadedScheduler(threading.Thread):  # noqa: N801
+class _ThreadedScheduler(threading.Thread):
     """
     A scalable implementation of *APScheduler*'s *BlockingScheduler*.
 
