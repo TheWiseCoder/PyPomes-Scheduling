@@ -12,36 +12,45 @@ class _ThreadedScheduler(threading.Thread):
 
     This implementation may run as single or multiple instances, each on its own thread.
     """
-    _scheduler: BlockingScheduler
-    _logger: logging.Logger
-    _stopped: bool
+    # instance attributes
+    scheduler: BlockingScheduler
+    logger: logging.Logger
+    stopped: bool
 
     def __init__(self, timezone: pytz.timezone, retry_interval: int, logger: logging.Logger = None) -> None:
 
         threading.Thread.__init__(self)
 
-        self._stopped = False
-        self._logger = logger
-        self._scheduler = BlockingScheduler(logging=logger,
-                                            timezone=timezone,
-                                            jobstore_retry_interval=retry_interval)
-        if self._logger is not None:
-            self._logger.info("Instanced, with timezone "
+        self.stopped = False
+        self.logger = logger
+        self.scheduler = BlockingScheduler(logging=logger,
+                                           timezone=timezone,
+                                           jobstore_retry_interval=retry_interval)
+        if self.logger is not None:
+            self.logger.info("Instanced, with timezone "
                               f"'{timezone}' and retry interval '{retry_interval}'")
 
     def run(self) -> None:
         """Start the scheduler in its own thread."""
         # stay in loop until 'stop()' is invoked
-        while not self._stopped:
-            if self._logger is not None:
-                self._logger.info("Started")
+        while not self.stopped:
+            if self.logger is not None:
+                self.logger.info("Started")
 
             # start the scheduler, blocking the thread until it is interrupted
-            self._scheduler.start()
+            self.scheduler.start()
 
-        self._scheduler.shutdown()
-        if self._logger is not None:
-            self._logger.info("Finished")
+        self.scheduler.shutdown()
+        if self.logger is not None:
+            self.logger.info("Finished")
+
+    def stop(self) -> None:
+        """
+          Stop the scheduler.
+        """
+        if self.logger is not None:
+            self.logger.info("Finishing...")
+        self.stopped = True
 
     def schedule_job(self, job: callable, job_id: str, job_name: str, job_cron: str = None,
                      job_start: datetime = None, job_args: tuple = None, job_kwargs: dict = None) -> None:
@@ -90,19 +99,11 @@ class _ThreadedScheduler(threading.Thread):
                                       month=vals[3],
                                       day_of_week=vals[4],
                                       start_date=job_start)
-        self._scheduler.add_job(func=job,
-                                trigger=aps_trigger,
-                                args=job_args,
-                                kwargs=job_kwargs,
-                                id=job_id,
-                                name=job_name)
-        if self._logger is not None:
-            self._logger.info(f"Job '{job_name}' scheduled, with CRON '{job_cron}'")
-
-    def stop(self) -> None:
-        """
-          Stop the scheduler.
-        """
-        if self._logger is not None:
-            self._logger.info("Finishing...")
-        self._stopped = True
+        self.scheduler.add_job(func=job,
+                               trigger=aps_trigger,
+                               args=job_args,
+                               kwargs=job_kwargs,
+                               id=job_id,
+                               name=job_name)
+        if self.logger is not None:
+            self.logger.info(f"Job '{job_name}' scheduled, with CRON '{job_cron}'")
