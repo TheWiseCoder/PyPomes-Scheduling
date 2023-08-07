@@ -1,11 +1,13 @@
-from datetime import datetime
-from pypomes_core import exc_format
-from typing import Final
 import logging
 import pytz
 import re
 import sys
+from datetime import datetime
+from pypomes_core import APP_PREFIX, TIMEZONE_LOCAL, env_get_int, exc_format
+from typing import Final
 from .threaded_scheduler import _ThreadedScheduler
+
+SCHEDULER_RETRY_INTERVAL: Final[int] = env_get_int(f"{APP_PREFIX}_SCHEDULER_RETRY_INTERVAL", 10)
 
 __DEFAULT_BADGE: Final[str] = "__default__"
 
@@ -22,16 +24,17 @@ __REGEX_VERIFY_CRON: Final[str] = (
 __schedulers: dict = {}
 
 
-def scheduler_create(errors: list[str], timezone: pytz.BaseTzInfo,
-                     retry_interval: int, logger: logging.Logger = None, badge: str = None) -> bool:
+def scheduler_create(errors: list[str], timezone: pytz.BaseTzInfo = TIMEZONE_LOCAL,
+                     retry_interval: int = SCHEDULER_RETRY_INTERVAL,
+                     logger: logging.Logger = None, badge: str = None) -> bool:
     """
     Create the threaded job scheduler.
 
     This is a wrapper around the package *APScheduler*.
 
     :param errors: incidental errors
-    :param timezone: the timezone to be used
-    :param retry_interval: interval between retry attempts, in minutes
+    :param timezone: the timezone to be used (defaults to the configured local timezone)
+    :param retry_interval: interval between retry attempts, in minutes (defaults to the configured value)
     :param logger: optional logger object
     :param badge: optional badge identifying the scheduler
     :return: True if the scheduler was created, or False otherwise
