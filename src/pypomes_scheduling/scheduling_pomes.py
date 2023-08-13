@@ -1,8 +1,8 @@
-import logging
 import pytz
 import re
 import sys
 from datetime import datetime
+from logging import Logger
 from pypomes_core import APP_PREFIX, TIMEZONE_LOCAL, env_get_int, exc_format
 from typing import Final
 from .threaded_scheduler import _ThreadedScheduler
@@ -24,9 +24,9 @@ __REGEX_VERIFY_CRON: Final[str] = (
 __schedulers: dict = {}
 
 
-def scheduler_create(errors: list[str], timezone: pytz.BaseTzInfo = TIMEZONE_LOCAL,
+def scheduler_create(errors: list[str] | None, timezone: pytz.BaseTzInfo = TIMEZONE_LOCAL,
                      retry_interval: int = SCHEDULER_RETRY_INTERVAL,
-                     logger: logging.Logger = None, badge: str = None) -> bool:
+                     logger: Logger = None, badge: str = __DEFAULT_BADGE) -> bool:
     """
     Create the threaded job scheduler.
 
@@ -35,54 +35,56 @@ def scheduler_create(errors: list[str], timezone: pytz.BaseTzInfo = TIMEZONE_LOC
     :param errors: incidental errors
     :param timezone: the timezone to be used (defaults to the configured local timezone)
     :param retry_interval: interval between retry attempts, in minutes (defaults to the configured value)
-    :param logger: optional logger object
-    :param badge: optional badge identifying the scheduler
+    :param logger: optional logger for logging the scheduler's operations
+    :param badge: badge identifying the scheduler (defaults to __DEFAULT_BADGE)
     :return: True if the scheduler was created, or False otherwise
     """
     # inicialize the return variable
     result: bool = False
     
-    # define the badge
-    curr_badge: str = badge or __DEFAULT_BADGE
-    
     # has the scheduler been created ?
-    if __get_scheduler(errors, curr_badge, False) is None:
+    if __get_scheduler(errors, badge, False) is None:
         # no, create it
         try:
-            __schedulers[curr_badge] = _ThreadedScheduler(timezone, retry_interval, logger)
-            __schedulers[curr_badge].daemon = True
+            __schedulers[badge] = _ThreadedScheduler(timezone, retry_interval, logger)
+            __schedulers[badge].daemon = True
             result = True
         except Exception as e:
-            errors.append(f"Error creating the job scheduler '{curr_badge}': "
-                          f"{exc_format(e, sys.exc_info())}")
+            err_msg: str = (
+                f"Error creating the job scheduler '{badge}': "
+                f"{exc_format(e, sys.exc_info())}"
+            )
+            if logger:
+                logger.error(err_msg)
+            if errors:
+                errors.append(err_msg)
 
     return result
 
 
-def scheduler_destroy(badge: str = None) -> None:
+def scheduler_destroy(badge: str = __DEFAULT_BADGE) -> None:
     """
     Destroy the scheduler identified by *badge*. *Noop* if the scheduler does not exist.
 
-    :param badge:  optional badge identifying the scheduler
+    :param badge:  badge identifying the scheduler (defaults to __DEFAULT_BADGE)
     """
-    # define the badge
-    curr_badge: str = badge or __DEFAULT_BADGE
-    scheduler: _ThreadedScheduler = __schedulers.get(curr_badge)
+    # retrieve the scheduler
+    scheduler: _ThreadedScheduler = __schedulers.get(badge)
 
     # does the scheduler exist ?
     if scheduler is not None:
         # yes, stop and discard it
         scheduler.stop()
-        __schedulers.pop(curr_badge)
+        __schedulers.pop(badge)
 
 
-def scheduler_start(errors: list[str], badge: str = None) -> bool:
+def scheduler_start(errors: list[str] | None, badge: str = __DEFAULT_BADGE) -> bool:
     """
     Start the scheduler.
 
     :param errors: incidental errors
-    :param badge: optional badge identifying the scheduler
-    :return: True if the scheduler has been started, False otherwise
+    :param badge: badge identifying the scheduler (defaults to __DEFAULT_BADGE)
+    :return: True if the scheduler has been started, or False otherwise
     """
     # initialize the return variable
     result: bool = False
@@ -96,19 +98,25 @@ def scheduler_start(errors: list[str], badge: str = None) -> bool:
             scheduler.start()
             result = True
         except Exception as e:
-            errors.append(f"Error starting the scheduler '{badge or __DEFAULT_BADGE}': "
-                          f"{exc_format(e, sys.exc_info())}")
+            err_msg: str = (
+                f"Error starting the scheduler '{badge}': "
+                f"{exc_format(e, sys.exc_info())}"
+            )
+            if errors:
+                errors.append(err_msg)
+            if scheduler.logger:
+                scheduler.logger.error(err_msg)
 
     return result
 
 
-def scheduler_stop(errors: list[str], badge: str = None) -> bool:
+def scheduler_stop(errors: list[str], badge: str = __DEFAULT_BADGE) -> bool:
     """
     Stop the scheduler.
 
     :param errors: incidental errors
-    :param badge: optional badge identifying the scheduler
-    :return: True if the scheduler has been stopped, False otherwise
+    :param badge: badge identifying the scheduler (defaults to __DEFAULT_BADGE)
+    :return: True if the scheduler has been stopped, or False otherwise
     """
     # initialize the return variable
     result: bool = False
@@ -124,9 +132,10 @@ def scheduler_stop(errors: list[str], badge: str = None) -> bool:
     return result
 
 
-def scheduler_add_job(errors: list[str], job: callable, job_id: str, job_name: str,
+def scheduler_add_job(errors: list[str] | None, job: callable, job_id: str, job_name: str,
                       job_cron: str = None, job_start: datetime = None,
-                      job_args: tuple = None, job_kwargs: dict = None, badge: str = None) -> bool:
+                      job_args: tuple = None, job_kwargs: dict = None,
+                      badge: str = __DEFAULT_BADGE, logger: Logger = None) -> bool:
     """
     Schedule the job identified as *job_id* and named as *job_name*.
 
@@ -143,7 +152,8 @@ def scheduler_add_job(errors: list[str], job: callable, job_id: str, job_name: s
     :param job_start: the start timestamp
     :param job_args: the positional arguments for the scheduled job
     :param job_kwargs: the named arguments for the scheduled job
-    :param badge: optional badge identifying the scheduler
+    :param badge: badge identifying the scheduler (defaults to __DEFAULT_BADGE)
+    :param logger: optional logger
     :return: True if the job was successfully scheduled, or False otherwise
     """
     # initialize the return variable
@@ -152,27 +162,34 @@ def scheduler_add_job(errors: list[str], job: callable, job_id: str, job_name: s
     # retrieve the scheduler
     scheduler: _ThreadedScheduler = __get_scheduler(errors, badge)
     
-    # proceed, if the scheduler was retrieved
+    # was the scheduler retrieved ?
     if scheduler is not None:
+        # yes, proceed
         result = __scheduler_add_job(errors, scheduler, job, job_id, job_name,
-                                     job_cron, job_start, job_args, job_kwargs)
+                                     job_cron, job_start, job_args, job_kwargs, logger)
 
     return result
 
 
-def scheduler_add_jobs(errors: list[str],
+def scheduler_add_jobs(errors: list[str] | None,
                        jobs: list[tuple[callable, str, str, str, datetime, tuple, dict]],
-                       badge: str = None) -> int:
-    """
-    Schedule the jobs described in *jobs*, starting at the given *start*.
+                       badge: str = __DEFAULT_BADGE, logger: Logger = None) -> int:
+    r"""
+    Schedule the jobs described in *jobs*, starting at the given timestamp.
 
-    Each element in the job list is a *tuple* with the corresponding job data:
-    *(callable function, job id, job name, CRON expression, start timestamp, job args, job kwargs)*.
+    Each element in the job list is a *tuple* with the following job data items:
+        - callable function: the function to be invoked by the scheduler (*callable*)
+        - job id: the id of the job to be started (*str*)
+        - job name: the name of the job to be started (*str*)
+        - start timestamp: the date and time to start scheduling the job (*datetime*)
+        - job args: the positional arguments (*\*args*) to be passed to the job (*tuple*)
+        - job kwargs: the named arguments (*\*\*kwargs*) to be passed to the job (*dict*)
     Only the first three data items are required.
 
     :param errors: incidental errors
-    :param jobs: list of tuples containing the jobs to schedule
-    :param badge: optional badge identifying the scheduler
+    :param jobs: list of tuples describing the jobs to be scheduled
+    :param badge: badge identifying the scheduler (defaults to __DEFAULT_BADGE)
+    :param logger: optional logger
     :return: the number of jobs effectively scheduled
     """
     # initialize the return variable
@@ -185,32 +202,42 @@ def scheduler_add_jobs(errors: list[str],
     if scheduler is not None:
         # traverse the job list and attempt the scheduling
         for job in jobs:
+            # process the required parameters
+            job_function: callable = job[0]
+            job_id: str = job[1]
+            job_name: str = job[2]
+
             # process the optional arguments
             job_cron: str = job[3] if len(job) > 3 else None
             job_start: datetime = job[4] if len(job) > 4 else None
             job_args: tuple = job[5] if len(job) > 5 else None
             job_kwargs: dict = job[6] if len(job) > 6 else None
             # add to the return valiable, if scheduling was successful
-            if __scheduler_add_job(errors, scheduler, job[0], job[1], job[2],
-                                   job_cron, job_start, job_args, job_kwargs):
+            if __scheduler_add_job(errors, scheduler, job_function, job_id, job_name,
+                                   job_cron, job_start, job_args, job_kwargs, logger):
                 result += 1
 
     return result
 
 
-def __get_scheduler(errors: list[str], badge: str, must_exist: bool = True) -> _ThreadedScheduler:
+def __get_scheduler(errors: list[str] | None, badge: str,
+                    must_exist: bool = True, logger: Logger = None) -> _ThreadedScheduler:
     """
     Retrieve the scheduler identified by *badge*.
 
     :param errors: incidental errors
-    :param badge: optional badge identifying the scheduler
+    :param badge: badge identifying the scheduler
     :param must_exist: True if scheduler must exist
+    :param logger: optional logger
     :return: the scheduler retrieved, or None otherwise
     """
-    curr_badge = badge or __DEFAULT_BADGE
-    result: _ThreadedScheduler = __schedulers.get(curr_badge)
+    result: _ThreadedScheduler = __schedulers.get(badge)
     if must_exist and result is None:
-        errors.append(f"Job scheduler '{curr_badge}' has not been created")
+        err_msg: str = f"Job scheduler '{badge}' has not been created"
+        if logger:
+            logger.error(err_msg)
+        if errors:
+            errors.append(err_msg)
         
     return result
 
@@ -218,8 +245,8 @@ def __get_scheduler(errors: list[str], badge: str, must_exist: bool = True) -> _
 def __scheduler_add_job(errors: list[str], scheduler: _ThreadedScheduler,
                         job: callable, job_id: str, job_name: str,
                         job_cron: str = None, job_start: datetime = None,
-                        job_args: tuple = None, job_kwargs: dict = None) -> bool:
-    """
+                        job_args: tuple = None, job_kwargs: dict = None, logger: Logger = None) -> bool:
+    r"""
     Use *scheduler* to schedule the job identified as *job_id* and named as *job_name*.
 
     The scheduling is performed with the *CRON* expression *job_cron*, starting at the timestamp *job_start*.
@@ -233,25 +260,34 @@ def __scheduler_add_job(errors: list[str], scheduler: _ThreadedScheduler,
     :param job_id: the id of the job to be scheduled
     :param job_name: the name of the job to be scheduled
     :param job_cron: the CRON expression
-    :param job_start: the start timestamp
-    :param job_args: the positional arguments for the scheduled job
-    :param job_kwargs: the named arguments for the scheduled job
+    :param job_start: the date and time to start scheduling the the job
+    :param job_args: the positional arguments (*\*args*) to be passed to the job
+    :param job_kwargs: the named arguments (*\*\*kwargs*) to be passed to the job
+    :param logger: optional logger
     :return: True if the job was successfully scheduled, or False otherwise
     """
     # initialize the return variable
     result: bool = False
 
+    err_msg: str | None = None
     # has a valid CRON expression been provided ?
     if job_cron is not None and re.search(__REGEX_VERIFY_CRON, job_cron) is None:
         # no, report the error
-        errors.append(f"Invalid CRON expression: '{job_cron}'")
+        err_msg = f"Invalid CRON expression: '{job_cron}'"
     else:
         # yes, proceed with the scheduling
         try:
             scheduler.schedule_job(job, job_id, job_name, job_cron, job_start, job_args, job_kwargs)
             result = True
         except Exception as e:
-            errors.append(f"Error scheduling the job '{job_name}', id '{job_id}', "
-                          f"with CRON '{job_cron}': {exc_format(e, sys.exc_info())}")
+            err_msg = (
+                f"Error scheduling the job '{job_name}', id '{job_id}', "
+                f"with CRON '{job_cron}': {exc_format(e, sys.exc_info())}"
+            )
+    if err_msg:
+        if logger:
+            logger.error(err_msg)
+        if errors:
+            errors.append(err_msg)
 
     return result

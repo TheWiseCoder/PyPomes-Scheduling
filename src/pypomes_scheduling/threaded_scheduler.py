@@ -1,16 +1,16 @@
-from datetime import datetime
-from apscheduler.schedulers.blocking import BlockingScheduler
-from apscheduler.triggers.cron import CronTrigger
 import logging
 import pytz
 import threading
+from datetime import datetime
+from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 
 class _ThreadedScheduler(threading.Thread):
     """
     A scalable implementation of *APScheduler*'s *BlockingScheduler*.
 
-    This implementation may run as single or multiple instances, each on its own thread.
+    This implementation may run as single or multiple instances, each instance on its own thread.
     """
     # instance attributes
     scheduler: BlockingScheduler
@@ -18,7 +18,16 @@ class _ThreadedScheduler(threading.Thread):
     stopped: bool
 
     def __init__(self, timezone: pytz.timezone, retry_interval: int, logger: logging.Logger = None) -> None:
+        """
+        Initialize the scheduler.
 
+        This is the simplest possible scheduler. It runs on the foreground of its own thread, so when
+        *start()* is invoked, the call never returns.
+
+        :param timezone: the reference timezone in job timestamps
+        :param retry_interval: interval between retry attempts, in minutes
+        :param logger: optional logger to use for logging the scheduler's operations
+        """
         threading.Thread.__init__(self)
 
         self.stopped = False
@@ -28,10 +37,12 @@ class _ThreadedScheduler(threading.Thread):
                                            jobstore_retry_interval=retry_interval)
         if self.logger is not None:
             self.logger.info("Instanced, with timezone "
-                              f"'{timezone}' and retry interval '{retry_interval}'")
+                             f"'{timezone}' and retry interval '{retry_interval}'")
 
     def run(self) -> None:
-        """Start the scheduler in its own thread."""
+        """
+        Start the scheduler in its own thread.
+        """
         # stay in loop until 'stop()' is invoked
         while not self.stopped:
             if self.logger is not None:
@@ -49,7 +60,7 @@ class _ThreadedScheduler(threading.Thread):
           Stop the scheduler.
         """
         if self.logger is not None:
-            self.logger.info("Finishing...")
+            self.logger.info("Stopping...")
         self.stopped = True
 
     def schedule_job(self, job: callable, job_id: str, job_name: str, job_cron: str = None,
