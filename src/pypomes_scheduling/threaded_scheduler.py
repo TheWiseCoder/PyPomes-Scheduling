@@ -1,9 +1,9 @@
-import logging
 import pytz
 import threading
 from datetime import datetime
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
+from logging import Logger
 
 
 class _ThreadedScheduler(threading.Thread):
@@ -12,12 +12,8 @@ class _ThreadedScheduler(threading.Thread):
 
     This implementation may run as single or multiple instances, each instance on its own thread.
     """
-    # instance attributes
-    scheduler: BlockingScheduler
-    logger: logging.Logger
-    stopped: bool
 
-    def __init__(self, timezone: pytz.timezone, retry_interval: int, logger: logging.Logger = None) -> None:
+    def __init__(self, timezone: pytz.timezone, retry_interval: int, logger: Logger = None) -> None:
         """
         Initialize the scheduler.
 
@@ -30,11 +26,12 @@ class _ThreadedScheduler(threading.Thread):
         """
         threading.Thread.__init__(self)
 
-        self.stopped = False
-        self.logger = logger
-        self.scheduler = BlockingScheduler(logging=logger,
-                                           timezone=timezone,
-                                           jobstore_retry_interval=retry_interval)
+        # instance attributes
+        self.stopped: bool = False
+        self.logger: Logger = logger
+        self.scheduler: BlockingScheduler = BlockingScheduler(logging=logger,
+                                                              timezone=timezone,
+                                                              jobstore_retry_interval=retry_interval)
         if self.logger is not None:
             self.logger.info("Instanced, with timezone "
                              f"'{timezone}' and retry interval '{retry_interval}'")
