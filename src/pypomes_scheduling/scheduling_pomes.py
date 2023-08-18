@@ -56,7 +56,7 @@ def scheduler_create(errors: list[str] | None, timezone: pytz.BaseTzInfo = TIMEZ
             )
             if logger:
                 logger.error(err_msg)
-            if errors:
+            if errors is not None:
                 errors.append(err_msg)
 
     return result
@@ -102,10 +102,10 @@ def scheduler_start(errors: list[str] | None, badge: str = __DEFAULT_BADGE) -> b
                 f"Error starting the scheduler '{badge}': "
                 f"{exc_format(e, sys.exc_info())}"
             )
-            if errors:
-                errors.append(err_msg)
             if scheduler.logger:
                 scheduler.logger.error(err_msg)
+            if errors is not None:
+                errors.append(err_msg)
 
     return result
 
@@ -236,7 +236,7 @@ def __get_scheduler(errors: list[str] | None, badge: str,
         err_msg: str = f"Job scheduler '{badge}' has not been created"
         if logger:
             logger.error(err_msg)
-        if errors:
+        if errors is not None:
             errors.append(err_msg)
         
     return result
@@ -287,7 +287,7 @@ def __scheduler_add_job(errors: list[str], scheduler: _ThreadedScheduler,
     if err_msg:
         if logger:
             logger.error(err_msg)
-        if errors:
+        if errors is not None:
             errors.append(err_msg)
 
     return result
