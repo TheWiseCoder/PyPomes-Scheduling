@@ -32,7 +32,7 @@ class _ThreadedScheduler(threading.Thread):
         self.scheduler: BlockingScheduler = BlockingScheduler(logging=logger,
                                                               timezone=timezone,
                                                               jobstore_retry_interval=retry_interval)
-        if self.logger is not None:
+        if self.logger:
             self.logger.info("Instanced, with timezone "
                              f"'{timezone}' and retry interval '{retry_interval}'")
 
@@ -42,21 +42,21 @@ class _ThreadedScheduler(threading.Thread):
         """
         # stay in loop until 'stop()' is invoked
         while not self.stopped:
-            if self.logger is not None:
+            if self.logger:
                 self.logger.info("Started")
 
             # start the scheduler, blocking the thread until it is interrupted
             self.scheduler.start()
 
         self.scheduler.shutdown()
-        if self.logger is not None:
+        if self.logger:
             self.logger.info("Finished")
 
     def stop(self) -> None:
         """
           Stop the scheduler.
         """
-        if self.logger is not None:
+        if self.logger:
             self.logger.info("Stopping...")
         self.stopped = True
 
@@ -97,7 +97,7 @@ class _ThreadedScheduler(threading.Thread):
 
         aps_trigger: CronTrigger | None = None
         # has the CRON expression been defined ?
-        if cron_expr is not None:
+        if cron_expr:
             # yes, build the trigger: <minute> <hour> <day-of-month> <month> <day-of-week>
             vals: list[str] = cron_expr.split()
             vals = [None if val == "?" else val for val in vals]
@@ -113,5 +113,5 @@ class _ThreadedScheduler(threading.Thread):
                                kwargs=job_kwargs,
                                id=job_id,
                                name=job_name)
-        if self.logger is not None:
+        if self.logger:
             self.logger.info(f"Job '{job_name}' scheduled, with CRON '{job_cron}'")

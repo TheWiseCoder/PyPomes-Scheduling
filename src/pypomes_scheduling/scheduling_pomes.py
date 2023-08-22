@@ -72,7 +72,7 @@ def scheduler_destroy(badge: str = __DEFAULT_BADGE) -> None:
     scheduler: _ThreadedScheduler = __schedulers.get(badge)
 
     # does the scheduler exist ?
-    if scheduler is not None:
+    if scheduler:
         # yes, stop and discard it
         scheduler.stop()
         __schedulers.pop(badge)
@@ -93,7 +93,7 @@ def scheduler_start(errors: list[str] | None, badge: str = __DEFAULT_BADGE) -> b
     scheduler: _ThreadedScheduler = __get_scheduler(errors, badge)
 
     # proceed, if the scheduler was retrieved
-    if scheduler is not None:
+    if scheduler:
         try:
             scheduler.start()
             result = True
@@ -125,7 +125,7 @@ def scheduler_stop(errors: list[str], badge: str = __DEFAULT_BADGE) -> bool:
     scheduler: _ThreadedScheduler = __get_scheduler(errors, badge)
 
     # proceed, if the scheduler was retrieved
-    if scheduler is not None:
+    if scheduler:
         scheduler.stop()
         result = True
 
@@ -163,7 +163,7 @@ def scheduler_add_job(errors: list[str] | None, job: callable, job_id: str, job_
     scheduler: _ThreadedScheduler = __get_scheduler(errors, badge)
     
     # was the scheduler retrieved ?
-    if scheduler is not None:
+    if scheduler:
         # yes, proceed
         result = __scheduler_add_job(errors, scheduler, job, job_id, job_name,
                                      job_cron, job_start, job_args, job_kwargs, logger)
@@ -199,7 +199,7 @@ def scheduler_add_jobs(errors: list[str] | None,
     scheduler: _ThreadedScheduler = __get_scheduler(errors, badge)
     
     # proceed, if the scheduler was retrieved
-    if scheduler is not None:
+    if scheduler:
         # traverse the job list and attempt the scheduling
         for job in jobs:
             # process the required parameters
@@ -271,7 +271,7 @@ def __scheduler_add_job(errors: list[str], scheduler: _ThreadedScheduler,
 
     err_msg: str | None = None
     # has a valid CRON expression been provided ?
-    if job_cron is not None and re.search(__REGEX_VERIFY_CRON, job_cron) is None:
+    if job_cron and not re.search(__REGEX_VERIFY_CRON, job_cron):
         # no, report the error
         err_msg = f"Invalid CRON expression: '{job_cron}'"
     else:
