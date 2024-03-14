@@ -24,19 +24,21 @@ __REGEX_VERIFY_CRON: Final[str] = (
 __schedulers: dict = {}
 
 
-def scheduler_create(errors: list[str] | None, timezone: pytz.BaseTzInfo = TIMEZONE_LOCAL,
+def scheduler_create(errors: list[str] | None, badge: str = __DEFAULT_BADGE,
+                     is_daemon: bool = True, timezone: pytz.BaseTzInfo = TIMEZONE_LOCAL,
                      retry_interval: int = SCHEDULER_RETRY_INTERVAL,
-                     logger: Logger = None, badge: str = __DEFAULT_BADGE) -> bool:
+                     logger: Logger = None) -> bool:
     """
     Create the threaded job scheduler.
 
     This is a wrapper around the package *APScheduler*.
 
     :param errors: incidental errors
+    :param is_daemon: indicates whether this thread is a daemon thread (defaults to True)
+    :param badge: badge identifying the scheduler (defaults to __DEFAULT_BADGE)
     :param timezone: the timezone to be used (defaults to the configured local timezone)
     :param retry_interval: interval between retry attempts, in minutes (defaults to the configured value)
     :param logger: optional logger for logging the scheduler's operations
-    :param badge: badge identifying the scheduler (defaults to __DEFAULT_BADGE)
     :return: True if the scheduler was created, or False otherwise
     """
     # inicialize the return variable
@@ -47,7 +49,8 @@ def scheduler_create(errors: list[str] | None, timezone: pytz.BaseTzInfo = TIMEZ
         # no, create it
         try:
             __schedulers[badge] = _ThreadedScheduler(timezone, retry_interval, logger)
-            __schedulers[badge].daemon = True
+            if is_daemon:
+                __schedulers[badge].daemon = True
             result = True
         except Exception as e:
             err_msg: str = (

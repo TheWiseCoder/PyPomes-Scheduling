@@ -65,6 +65,8 @@ class _ThreadedScheduler(threading.Thread):
         """
         Schedule the given *job*, with the given parameters.
 
+        The CRON expression syntax is: <min> <hour> <day> <month> <day-of-week>
+
         :param job: the callable object to be scheduled
         :param job_id: the id of the scheduled job
         :param job_name: the name of the scheduled job
