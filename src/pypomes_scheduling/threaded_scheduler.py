@@ -13,7 +13,10 @@ class _ThreadedScheduler(threading.Thread):
     This implementation may run as single or multiple instances, each instance on its own thread.
     """
 
-    def __init__(self, timezone: pytz.timezone, retry_interval: int, logger: Logger = None) -> None:
+    def __init__(self,
+                 timezone: pytz.timezone,
+                 retry_interval: int,
+                 logger: Logger = None) -> None:
         """
         Initialize the scheduler.
 
@@ -33,8 +36,8 @@ class _ThreadedScheduler(threading.Thread):
                                                               timezone=timezone,
                                                               jobstore_retry_interval=retry_interval)
         if self.logger:
-            self.logger.info("Instanced, with timezone "
-                             f"'{timezone}' and retry interval '{retry_interval}'")
+            self.logger.info(msg=("Instanced, with timezone "
+                                  f"'{timezone}' and retry interval '{retry_interval}'"))
 
     def run(self) -> None:
         """
@@ -60,8 +63,14 @@ class _ThreadedScheduler(threading.Thread):
             self.logger.info("Stopping...")
         self.stopped = True
 
-    def schedule_job(self, job: callable, job_id: str, job_name: str, job_cron: str = None,
-                     job_start: datetime = None, job_args: tuple = None, job_kwargs: dict = None) -> None:
+    def schedule_job(self,
+                     job: callable,
+                     job_id: str,
+                     job_name: str,
+                     job_cron: str = None,
+                     job_start: datetime = None,
+                     job_args: tuple = None,
+                     job_kwargs: dict = None) -> None:
         """
         Schedule the given *job*, with the given parameters.
 
@@ -116,4 +125,4 @@ class _ThreadedScheduler(threading.Thread):
                                id=job_id,
                                name=job_name)
         if self.logger:
-            self.logger.info(f"Job '{job_name}' scheduled, with CRON '{job_cron}'")
+            self.logger.info(msg=f"Job '{job_name}' scheduled, with CRON '{job_cron}'")

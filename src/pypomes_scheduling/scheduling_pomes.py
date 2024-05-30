@@ -7,10 +7,12 @@ from pypomes_core import APP_PREFIX, TIMEZONE_LOCAL, env_get_int, exc_format
 from typing import Final
 from .threaded_scheduler import _ThreadedScheduler
 
-SCHEDULER_RETRY_INTERVAL: Final[int] = env_get_int(f"{APP_PREFIX}_SCHEDULER_RETRY_INTERVAL", 10)
+SCHEDULER_RETRY_INTERVAL: Final[int] = env_get_int(key=f"{APP_PREFIX}_SCHEDULER_RETRY_INTERVAL",
+                                                   def_value=10)
 
 __DEFAULT_BADGE: Final[str] = "__default__"
 
+# ruff: noqa: W605
 __REGEX_VERIFY_CRON: Final[str] = (
     "/(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|"
     "(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,7})"
@@ -24,8 +26,10 @@ __REGEX_VERIFY_CRON: Final[str] = (
 __schedulers: dict = {}
 
 
-def scheduler_create(errors: list[str] | None, badge: str = __DEFAULT_BADGE,
-                     is_daemon: bool = True, timezone: pytz.BaseTzInfo = TIMEZONE_LOCAL,
+def scheduler_create(errors: list[str] | None,
+                     badge: str = __DEFAULT_BADGE,
+                     is_daemon: bool = True,
+                     timezone: pytz.BaseTzInfo = TIMEZONE_LOCAL,
                      retry_interval: int = SCHEDULER_RETRY_INTERVAL,
                      logger: Logger = None) -> bool:
     """
@@ -43,23 +47,29 @@ def scheduler_create(errors: list[str] | None, badge: str = __DEFAULT_BADGE,
     """
     # inicialize the return variable
     result: bool = False
-    
+
     # has the scheduler been created ?
-    if __get_scheduler(errors, badge, False) is None:
+    if __get_scheduler(errors=errors,
+                       badge=badge,
+                       must_exist=False,
+                       logger=logger) is None:
         # no, create it
         try:
-            __schedulers[badge] = _ThreadedScheduler(timezone, retry_interval, logger)
+            __schedulers[badge] = _ThreadedScheduler(timezone=timezone,
+                                                     retry_interval=retry_interval,
+                                                     logger=logger)
             if is_daemon:
                 __schedulers[badge].daemon = True
             result = True
         except Exception as e:
+            exc_err: str = exc_format(exc=e,
+                                      exc_info=sys.exc_info())
             err_msg: str = (
-                f"Error creating the job scheduler '{badge}': "
-                f"{exc_format(e, sys.exc_info())}"
+                f"Error creating the job scheduler '{badge}': {exc_err}"
             )
             if logger:
-                logger.error(err_msg)
-            if errors is not None:
+                logger.error(msg=err_msg)
+            if isinstance(errors, list):
                 errors.append(err_msg)
 
     return result
@@ -81,7 +91,8 @@ def scheduler_destroy(badge: str = __DEFAULT_BADGE) -> None:
         __schedulers.pop(badge)
 
 
-def scheduler_start(errors: list[str] | None, badge: str = __DEFAULT_BADGE) -> bool:
+def scheduler_start(errors: list[str] | None,
+                    badge: str = __DEFAULT_BADGE) -> bool:
     """
     Start the scheduler.
 
@@ -93,7 +104,8 @@ def scheduler_start(errors: list[str] | None, badge: str = __DEFAULT_BADGE) -> b
     result: bool = False
 
     # retrieve the scheduler
-    scheduler: _ThreadedScheduler = __get_scheduler(errors, badge)
+    scheduler: _ThreadedScheduler = __get_scheduler(errors=errors,
+                                                    badge=badge)
 
     # proceed, if the scheduler was retrieved
     if scheduler:
@@ -101,19 +113,21 @@ def scheduler_start(errors: list[str] | None, badge: str = __DEFAULT_BADGE) -> b
             scheduler.start()
             result = True
         except Exception as e:
+            exc_err: str = exc_format(exc=e,
+                                      exc_info=sys.exc_info())
             err_msg: str = (
-                f"Error starting the scheduler '{badge}': "
-                f"{exc_format(e, sys.exc_info())}"
+                f"Error starting the scheduler '{badge}': {exc_err}"
             )
             if scheduler.logger:
-                scheduler.logger.error(err_msg)
-            if errors is not None:
+                scheduler.logger.error(msg=err_msg)
+            if isinstance(errors, list):
                 errors.append(err_msg)
 
     return result
 
 
-def scheduler_stop(errors: list[str], badge: str = __DEFAULT_BADGE) -> bool:
+def scheduler_stop(errors: list[str],
+                   badge: str = __DEFAULT_BADGE) -> bool:
     """
     Stop the scheduler.
 
@@ -135,10 +149,16 @@ def scheduler_stop(errors: list[str], badge: str = __DEFAULT_BADGE) -> bool:
     return result
 
 
-def scheduler_add_job(errors: list[str] | None, job: callable, job_id: str, job_name: str,
-                      job_cron: str = None, job_start: datetime = None,
-                      job_args: tuple = None, job_kwargs: dict = None,
-                      badge: str = __DEFAULT_BADGE, logger: Logger = None) -> bool:
+def scheduler_add_job(errors: list[str] | None,
+                      job: callable,
+                      job_id: str,
+                      job_name: str,
+                      job_cron: str = None,
+                      job_start: datetime = None,
+                      job_args: tuple = None,
+                      job_kwargs: dict = None,
+                      badge: str = __DEFAULT_BADGE,
+                      logger: Logger = None) -> bool:
     """
     Schedule the job identified as *job_id* and named as *job_name*.
 
@@ -161,22 +181,31 @@ def scheduler_add_job(errors: list[str] | None, job: callable, job_id: str, job_
     """
     # initialize the return variable
     result: bool = False
-    
+
     # retrieve the scheduler
-    scheduler: _ThreadedScheduler = __get_scheduler(errors, badge)
-    
+    scheduler: _ThreadedScheduler = __get_scheduler(errors=errors,
+                                                    badge=badge)
+
     # was the scheduler retrieved ?
     if scheduler:
         # yes, proceed
-        result = __scheduler_add_job(errors, scheduler, job, job_id, job_name,
-                                     job_cron, job_start, job_args, job_kwargs, logger)
-
+        result = __scheduler_add_job(errors=errors,
+                                     scheduler=scheduler,
+                                     job=job,
+                                     job_id=job_id,
+                                     job_name=job_name,
+                                     job_cron=job_cron,
+                                     job_start=job_start,
+                                     job_args=job_args,
+                                     job_kwargs=job_kwargs,
+                                     logger=logger)
     return result
 
 
 def scheduler_add_jobs(errors: list[str] | None,
                        jobs: list[tuple[callable, str, str, str, datetime, tuple, dict]],
-                       badge: str = __DEFAULT_BADGE, logger: Logger = None) -> int:
+                       badge: str = __DEFAULT_BADGE,
+                       logger: Logger = None) -> int:
     r"""
     Schedule the jobs described in *jobs*, starting at the given timestamp.
 
@@ -199,8 +228,9 @@ def scheduler_add_jobs(errors: list[str] | None,
     result: int = 0
 
     # retrieve the scheduler
-    scheduler: _ThreadedScheduler = __get_scheduler(errors, badge)
-    
+    scheduler: _ThreadedScheduler = __get_scheduler(errors=errors,
+                                                    badge=badge)
+
     # proceed, if the scheduler was retrieved
     if scheduler:
         # traverse the job list and attempt the scheduling
@@ -216,15 +246,25 @@ def scheduler_add_jobs(errors: list[str] | None,
             job_args: tuple = job[5] if len(job) > 5 else None
             job_kwargs: dict = job[6] if len(job) > 6 else None
             # add to the return valiable, if scheduling was successful
-            if __scheduler_add_job(errors, scheduler, job_function, job_id, job_name,
-                                   job_cron, job_start, job_args, job_kwargs, logger):
+            if __scheduler_add_job(errors=errors,
+                                   scheduler=scheduler,
+                                   job=job_function,
+                                   job_id=job_id,
+                                   job_name=job_name,
+                                   job_cron=job_cron,
+                                   job_start=job_start,
+                                   job_args=job_args,
+                                   job_kwargs=job_kwargs,
+                                   logger=logger):
                 result += 1
 
     return result
 
 
-def __get_scheduler(errors: list[str] | None, badge: str,
-                    must_exist: bool = True, logger: Logger = None) -> _ThreadedScheduler:
+def __get_scheduler(errors: list[str] | None,
+                    badge: str,
+                    must_exist: bool = True,
+                    logger: Logger = None) -> _ThreadedScheduler:
     """
     Retrieve the scheduler identified by *badge*.
 
@@ -238,17 +278,23 @@ def __get_scheduler(errors: list[str] | None, badge: str,
     if must_exist and result is None:
         err_msg: str = f"Job scheduler '{badge}' has not been created"
         if logger:
-            logger.error(err_msg)
-        if errors is not None:
+            logger.error(msg=err_msg)
+        if isinstance(errors, list):
             errors.append(err_msg)
-        
+
     return result
 
 
-def __scheduler_add_job(errors: list[str], scheduler: _ThreadedScheduler,
-                        job: callable, job_id: str, job_name: str,
-                        job_cron: str = None, job_start: datetime = None,
-                        job_args: tuple = None, job_kwargs: dict = None, logger: Logger = None) -> bool:
+def __scheduler_add_job(errors: list[str],
+                        scheduler: _ThreadedScheduler,
+                        job: callable,
+                        job_id: str,
+                        job_name: str,
+                        job_cron: str = None,
+                        job_start: datetime = None,
+                        job_args: tuple = None,
+                        job_kwargs: dict = None,
+                        logger: Logger = None) -> bool:
     r"""
     Use *scheduler* to schedule the job identified as *job_id* and named as *job_name*.
 
@@ -274,13 +320,20 @@ def __scheduler_add_job(errors: list[str], scheduler: _ThreadedScheduler,
 
     err_msg: str | None = None
     # has a valid CRON expression been provided ?
-    if job_cron and not re.search(__REGEX_VERIFY_CRON, job_cron):
+    if job_cron and not re.search(pattern=__REGEX_VERIFY_CRON,
+                                  string=job_cron):
         # no, report the error
         err_msg = f"Invalid CRON expression: '{job_cron}'"
     else:
         # yes, proceed with the scheduling
         try:
-            scheduler.schedule_job(job, job_id, job_name, job_cron, job_start, job_args, job_kwargs)
+            scheduler.schedule_job(job=job,
+                                   job_id=job_id,
+                                   job_name=job_name,
+                                   job_cron=job_cron,
+                                   job_start=job_start,
+                                   job_args=job_args,
+                                   job_kwargs=job_kwargs)
             result = True
         except Exception as e:
             err_msg = (
@@ -289,8 +342,8 @@ def __scheduler_add_job(errors: list[str], scheduler: _ThreadedScheduler,
             )
     if err_msg:
         if logger:
-            logger.error(err_msg)
-        if errors is not None:
+            logger.error(msg=err_msg)
+        if isinstance(errors, list):
             errors.append(err_msg)
 
     return result
