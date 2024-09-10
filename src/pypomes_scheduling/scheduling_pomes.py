@@ -4,7 +4,8 @@ import sys
 from datetime import datetime
 from logging import Logger
 from pypomes_core import APP_PREFIX, TIMEZONE_LOCAL, env_get_int, exc_format
-from typing import Final
+from typing import Any, Final
+
 from .threaded_scheduler import _ThreadedScheduler
 
 SCHEDULER_RETRY_INTERVAL: Final[int] = env_get_int(key=f"{APP_PREFIX}_SCHEDULER_RETRY_INTERVAL",
@@ -23,7 +24,7 @@ __REGEX_VERIFY_CRON: Final[str] = (
 #     ...
 #     <badge-n>: <scheduler-instance-n>
 #   }>
-__schedulers: dict = {}
+__schedulers: dict[str, Any] = {}
 
 
 def scheduler_create(errors: list[str] | None,

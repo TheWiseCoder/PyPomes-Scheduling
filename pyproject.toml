@@ -6,11 +6,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pypomes_scheduling"
-version = "0.3.6"
+version = "0.3.7"
 authors = [
   { name="GT Nunes", email="wisecoder01@gmail.com" }
 ]
-description = "A collection of Python pomes, pennyeach (scheduling module)"
+description = "A collection of Python pomes, penyeach (scheduling module)"
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
@@ -19,11 +19,11 @@ classifiers = [
     "Operating System :: OS Independent"
 ]
 dependencies = [
-    "pip>=24.0",
-    "pypomes_core>=1.1.1",
-    "APScheduler>=3.10.1",
-    "setuptools>=68.0.0",
-    "wheel>=0.42.0"
+    "pip>=24.2",
+    "pypomes_core>=1.4.9",
+    "APScheduler>=3.10.4",
+    "setuptools>=74.1.2",
+    "wheel>=0.44.0"
 ]
 
 [project.urls]

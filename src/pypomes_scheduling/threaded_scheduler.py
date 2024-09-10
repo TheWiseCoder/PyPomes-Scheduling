@@ -57,7 +57,7 @@ class _ThreadedScheduler(threading.Thread):
 
     def stop(self) -> None:
         """
-          Stop the scheduler.
+        Stop the scheduler.
         """
         if self.logger:
             self.logger.info("Stopping...")
