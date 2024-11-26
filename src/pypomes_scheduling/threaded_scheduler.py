@@ -1,9 +1,9 @@
-import pytz
 import threading
 from datetime import datetime
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 from logging import Logger
+from zoneinfo import ZoneInfo
 
 
 class _ThreadedScheduler(threading.Thread):
@@ -14,7 +14,7 @@ class _ThreadedScheduler(threading.Thread):
     """
 
     def __init__(self,
-                 timezone: pytz.timezone,
+                 timezone: ZoneInfo,
                  retry_interval: int,
                  logger: Logger = None) -> None:
         """
@@ -36,8 +36,8 @@ class _ThreadedScheduler(threading.Thread):
                                                               timezone=timezone,
                                                               jobstore_retry_interval=retry_interval)
         if self.logger:
-            self.logger.info(msg=("Instanced, with timezone "
-                                  f"'{timezone}' and retry interval '{retry_interval}'"))
+            self.logger.debug(msg=(f"Instanced, with timezone '{timezone}' "
+                                   f"and retry interval '{retry_interval}'"))
 
     def run(self) -> None:
         """
@@ -46,21 +46,21 @@ class _ThreadedScheduler(threading.Thread):
         # stay in loop until 'stop()' is invoked
         while not self.stopped:
             if self.logger:
-                self.logger.info("Started")
+                self.logger.debug("Started")
 
             # start the scheduler, blocking the thread until it is interrupted
             self.scheduler.start()
 
         self.scheduler.shutdown()
         if self.logger:
-            self.logger.info("Finished")
+            self.logger.debug("Finished")
 
     def stop(self) -> None:
         """
         Stop the scheduler.
         """
         if self.logger:
-            self.logger.info("Stopping...")
+            self.logger.debug("Stopping...")
         self.stopped = True
 
     def schedule_job(self,
@@ -125,4 +125,4 @@ class _ThreadedScheduler(threading.Thread):
                                id=job_id,
                                name=job_name)
         if self.logger:
-            self.logger.info(msg=f"Job '{job_name}' scheduled, with CRON '{job_cron}'")
+            self.logger.debug(msg=f"Job '{job_name}' scheduled, with CRON '{job_cron}'")

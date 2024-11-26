@@ -1,10 +1,13 @@
-import pytz
 import re
 import sys
 from datetime import datetime
 from logging import Logger
-from pypomes_core import APP_PREFIX, TIMEZONE_LOCAL, env_get_int, exc_format
+from pypomes_core import (
+    APP_PREFIX, TIMEZONE_LOCAL,
+    env_get_int, exc_format
+)
 from typing import Any, Final
+from zoneinfo import ZoneInfo
 
 from .threaded_scheduler import _ThreadedScheduler
 
@@ -13,7 +16,6 @@ SCHEDULER_RETRY_INTERVAL: Final[int] = env_get_int(key=f"{APP_PREFIX}_SCHEDULER_
 
 __DEFAULT_BADGE: Final[str] = "__default__"
 
-# ruff: noqa: W605
 __REGEX_VERIFY_CRON: Final[str] = (
     "/(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|"
     "(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,7})"
@@ -30,7 +32,7 @@ __schedulers: dict[str, Any] = {}
 def scheduler_create(errors: list[str] | None,
                      badge: str = __DEFAULT_BADGE,
                      is_daemon: bool = True,
-                     timezone: pytz.BaseTzInfo = TIMEZONE_LOCAL,
+                     timezone: ZoneInfo = TIMEZONE_LOCAL,
                      retry_interval: int = SCHEDULER_RETRY_INTERVAL,
                      logger: Logger = None) -> bool:
     """
@@ -107,7 +109,6 @@ def scheduler_start(errors: list[str] | None,
     # retrieve the scheduler
     scheduler: _ThreadedScheduler = __get_scheduler(errors=errors,
                                                     badge=badge)
-
     # proceed, if the scheduler was retrieved
     if scheduler:
         try:
@@ -116,9 +117,7 @@ def scheduler_start(errors: list[str] | None,
         except Exception as e:
             exc_err: str = exc_format(exc=e,
                                       exc_info=sys.exc_info())
-            err_msg: str = (
-                f"Error starting the scheduler '{badge}': {exc_err}"
-            )
+            err_msg: str = f"Error starting the scheduler '{badge}': {exc_err}"
             if scheduler.logger:
                 scheduler.logger.error(msg=err_msg)
             if isinstance(errors, list):
@@ -140,8 +139,8 @@ def scheduler_stop(errors: list[str],
     result: bool = False
 
     # retrieve the scheduler
-    scheduler: _ThreadedScheduler = __get_scheduler(errors, badge)
-
+    scheduler: _ThreadedScheduler = __get_scheduler(errors=errors,
+                                                    badge=badge)
     # proceed, if the scheduler was retrieved
     if scheduler:
         scheduler.stop()
@@ -186,7 +185,6 @@ def scheduler_add_job(errors: list[str] | None,
     # retrieve the scheduler
     scheduler: _ThreadedScheduler = __get_scheduler(errors=errors,
                                                     badge=badge)
-
     # was the scheduler retrieved ?
     if scheduler:
         # yes, proceed
@@ -231,7 +229,6 @@ def scheduler_add_jobs(errors: list[str] | None,
     # retrieve the scheduler
     scheduler: _ThreadedScheduler = __get_scheduler(errors=errors,
                                                     badge=badge)
-
     # proceed, if the scheduler was retrieved
     if scheduler:
         # traverse the job list and attempt the scheduling
