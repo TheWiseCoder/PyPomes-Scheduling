@@ -15,7 +15,6 @@ SCHEDULER_RETRY_INTERVAL: Final[int] = env_get_int(key=f"{APP_PREFIX}_SCHEDULER_
                                                    def_value=10)
 
 __DEFAULT_BADGE: Final[str] = "__default__"
-
 __REGEX_VERIFY_CRON: Final[str] = (
     "/(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|"
     "(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,7})"
@@ -92,6 +91,24 @@ def scheduler_destroy(badge: str = __DEFAULT_BADGE) -> None:
         # yes, stop and discard it
         scheduler.stop()
         __schedulers.pop(badge)
+
+
+def scheduler_assert_access(errors: list[str] | None,
+                            logger: Logger = None) -> bool:
+    """
+    Determine whether accessing a scheduler is possible.
+
+    :param errors: incidental errors
+    :param logger: optional logger
+    :return: 'True' if accessing succeeded, 'False' otherwise
+    """
+    badge: str = "__temp__"
+    result: bool = scheduler_create(errors=errors,
+                                    badge=badge,
+                                    logger=logger)
+    if result:
+        scheduler_destroy(badge=badge)
+    return result
 
 
 def scheduler_start(errors: list[str] | None,

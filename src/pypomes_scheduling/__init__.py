@@ -1,5 +1,6 @@
 from .scheduling_pomes import (
     SCHEDULER_RETRY_INTERVAL,
+    scheduler_assert_access,
     scheduler_create, scheduler_destroy,
     scheduler_start, scheduler_stop,
     scheduler_add_job, scheduler_add_jobs,
@@ -8,6 +9,7 @@ from .scheduling_pomes import (
 __all__ = [
     # scheduling_pomes
     "SCHEDULER_RETRY_INTERVAL",
+    "scheduler_assert_access",
     "scheduler_create", "scheduler_destroy",
     "scheduler_start", "scheduler_stop",
     "scheduler_add_job", "scheduler_add_jobs",
