@@ -6,6 +6,7 @@ from pypomes_core import (
     APP_PREFIX, TIMEZONE_LOCAL,
     env_get_int, exc_format
 )
+from pypomes_logging import PYPOMES_LOGGER
 from typing import Any, Final
 from zoneinfo import ZoneInfo
 
@@ -17,7 +18,7 @@ SCHEDULER_RETRY_INTERVAL: Final[int] = env_get_int(key=f"{APP_PREFIX}_SCHEDULER_
 __DEFAULT_BADGE: Final[str] = "__default__"
 __REGEX_VERIFY_CRON: Final[str] = (
     "/(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|"
-    "(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,7})"
+    "(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,7})"  # noqa: W605
 )
 
 # dict holding the schedulers created:
@@ -33,7 +34,7 @@ def scheduler_create(errors: list[str] | None,
                      is_daemon: bool = True,
                      timezone: ZoneInfo = TIMEZONE_LOCAL,
                      retry_interval: int = SCHEDULER_RETRY_INTERVAL,
-                     logger: Logger = None) -> bool:
+                     logger: Logger = PYPOMES_LOGGER) -> bool:
     """
     Create the threaded job scheduler.
 
@@ -94,7 +95,7 @@ def scheduler_destroy(badge: str = __DEFAULT_BADGE) -> None:
 
 
 def scheduler_assert_access(errors: list[str] | None,
-                            logger: Logger = None) -> bool:
+                            logger: Logger = PYPOMES_LOGGER) -> bool:
     """
     Determine whether accessing a scheduler is possible.
 
@@ -175,7 +176,7 @@ def scheduler_add_job(errors: list[str] | None,
                       job_args: tuple = None,
                       job_kwargs: dict = None,
                       badge: str = __DEFAULT_BADGE,
-                      logger: Logger = None) -> bool:
+                      logger: Logger = PYPOMES_LOGGER) -> bool:
     """
     Schedule the job identified as *job_id* and named as *job_name*.
 
@@ -221,7 +222,7 @@ def scheduler_add_job(errors: list[str] | None,
 def scheduler_add_jobs(errors: list[str] | None,
                        jobs: list[tuple[callable, str, str, str, datetime, tuple, dict]],
                        badge: str = __DEFAULT_BADGE,
-                       logger: Logger = None) -> int:
+                       logger: Logger = PYPOMES_LOGGER) -> int:
     r"""
     Schedule the jobs described in *jobs*, starting at the given timestamp.
 
@@ -279,7 +280,7 @@ def scheduler_add_jobs(errors: list[str] | None,
 def __get_scheduler(errors: list[str] | None,
                     badge: str,
                     must_exist: bool = True,
-                    logger: Logger = None) -> _ThreadedScheduler:
+                    logger: Logger = PYPOMES_LOGGER) -> _ThreadedScheduler:
     """
     Retrieve the scheduler identified by *badge*.
 
@@ -309,7 +310,7 @@ def __scheduler_add_job(errors: list[str],
                         job_start: datetime = None,
                         job_args: tuple = None,
                         job_kwargs: dict = None,
-                        logger: Logger = None) -> bool:
+                        logger: Logger = PYPOMES_LOGGER) -> bool:
     r"""
     Use *scheduler* to schedule the job identified as *job_id* and named as *job_name*.
 

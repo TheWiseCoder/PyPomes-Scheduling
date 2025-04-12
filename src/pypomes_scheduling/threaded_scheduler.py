@@ -3,6 +3,7 @@ from datetime import datetime
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 from logging import Logger
+from pypomes_logging import PYPOMES_LOGGER
 from zoneinfo import ZoneInfo
 
 
@@ -16,7 +17,7 @@ class _ThreadedScheduler(threading.Thread):
     def __init__(self,
                  timezone: ZoneInfo,
                  retry_interval: int,
-                 logger: Logger = None) -> None:
+                 logger: Logger = PYPOMES_LOGGER) -> None:
         """
         Initialize the scheduler.
 
