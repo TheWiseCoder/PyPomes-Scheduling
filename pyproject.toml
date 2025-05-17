@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pypomes_scheduling"
-version = "0.4.2"
+version = "0.4.3"
 authors = [
   { name="GT Nunes", email="wisecoder01@gmail.com" }
 ]
@@ -20,8 +20,7 @@ classifiers = [
 ]
 dependencies = [
     "APScheduler>=3.11.0",
-    "pypomes_core>=2.0.6",
-    "pypomes_logging>=0.6.1"
+    "pypomes_core>=2.2.9"
 ]
 
 [project.urls]

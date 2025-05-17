@@ -6,7 +6,6 @@ from pypomes_core import (
     APP_PREFIX, TIMEZONE_LOCAL,
     env_get_int, exc_format
 )
-from pypomes_logging import PYPOMES_LOGGER
 from typing import Any, Final
 from zoneinfo import ZoneInfo
 
@@ -14,7 +13,6 @@ from .threaded_scheduler import _ThreadedScheduler
 
 SCHEDULER_RETRY_INTERVAL: Final[int] = env_get_int(key=f"{APP_PREFIX}_SCHEDULER_RETRY_INTERVAL",
                                                    def_value=10)
-
 __DEFAULT_BADGE: Final[str] = "__default__"
 __REGEX_VERIFY_CRON: Final[str] = (
     "/(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|"
@@ -34,19 +32,19 @@ def scheduler_create(errors: list[str] | None,
                      is_daemon: bool = True,
                      timezone: ZoneInfo = TIMEZONE_LOCAL,
                      retry_interval: int = SCHEDULER_RETRY_INTERVAL,
-                     logger: Logger = PYPOMES_LOGGER) -> bool:
+                     logger: Logger = None) -> bool:
     """
     Create the threaded job scheduler.
 
     This is a wrapper around the package *APScheduler*.
 
     :param errors: incidental errors
-    :param is_daemon: indicates whether this thread is a daemon thread (defaults to True)
+    :param is_daemon: indicates whether this thread is a daemon thread (defaults to *True*)
     :param badge: badge identifying the scheduler (defaults to __DEFAULT_BADGE)
     :param timezone: the timezone to be used (defaults to the configured local timezone)
     :param retry_interval: interval between retry attempts, in minutes (defaults to the configured value)
     :param logger: optional logger for logging the scheduler's operations
-    :return: True if the scheduler was created, or False otherwise
+    :return: *True* if the scheduler was created, *False* otherwise
     """
     # inicialize the return variable
     result: bool = False
@@ -67,9 +65,7 @@ def scheduler_create(errors: list[str] | None,
         except Exception as e:
             exc_err: str = exc_format(exc=e,
                                       exc_info=sys.exc_info())
-            err_msg: str = (
-                f"Error creating the job scheduler '{badge}': {exc_err}"
-            )
+            err_msg: str = f"Error creating the job scheduler '{badge}': {exc_err}"
             if logger:
                 logger.error(msg=err_msg)
             if isinstance(errors, list):
@@ -95,13 +91,13 @@ def scheduler_destroy(badge: str = __DEFAULT_BADGE) -> None:
 
 
 def scheduler_assert_access(errors: list[str] | None,
-                            logger: Logger = PYPOMES_LOGGER) -> bool:
+                            logger: Logger = None) -> bool:
     """
     Determine whether accessing a scheduler is possible.
 
     :param errors: incidental errors
     :param logger: optional logger
-    :return: 'True' if accessing succeeded, 'False' otherwise
+    :return: *True* if accessing succeeded, *False* otherwise
     """
     badge: str = "__temp__"
     result: bool = scheduler_create(errors=errors,
@@ -119,7 +115,7 @@ def scheduler_start(errors: list[str] | None,
 
     :param errors: incidental errors
     :param badge: badge identifying the scheduler (defaults to __DEFAULT_BADGE)
-    :return: True if the scheduler has been started, or False otherwise
+    :return: *True* if the scheduler has been started, *False* otherwise
     """
     # initialize the return variable
     result: bool = False
@@ -151,7 +147,7 @@ def scheduler_stop(errors: list[str],
 
     :param errors: incidental errors
     :param badge: badge identifying the scheduler (defaults to __DEFAULT_BADGE)
-    :return: True if the scheduler has been stopped, or False otherwise
+    :return: *True* if the scheduler has been stopped, *False* otherwise
     """
     # initialize the return variable
     result: bool = False
@@ -176,14 +172,13 @@ def scheduler_add_job(errors: list[str] | None,
                       job_args: tuple = None,
                       job_kwargs: dict = None,
                       badge: str = __DEFAULT_BADGE,
-                      logger: Logger = PYPOMES_LOGGER) -> bool:
+                      logger: Logger = None) -> bool:
     """
     Schedule the job identified as *job_id* and named as *job_name*.
 
     The scheduling is performed with the *CRON* expression *job_cron*, starting at the timestamp *job_start*.
     Positional arguments for the scheduled job may be provided in *job_args*.
     Named arguments for the scheduled job may be provided in *job_kwargs*.
-    Return *True* if the scheduling was successful.
 
     :param errors: incidental errors
     :param job: the job to be scheduled
@@ -195,7 +190,7 @@ def scheduler_add_job(errors: list[str] | None,
     :param job_kwargs: the named arguments for the scheduled job
     :param badge: badge identifying the scheduler (defaults to __DEFAULT_BADGE)
     :param logger: optional logger
-    :return: True if the job was successfully scheduled, or False otherwise
+    :return: *True* if the job was successfully scheduled, *False* otherwise
     """
     # initialize the return variable
     result: bool = False
@@ -222,7 +217,7 @@ def scheduler_add_job(errors: list[str] | None,
 def scheduler_add_jobs(errors: list[str] | None,
                        jobs: list[tuple[callable, str, str, str, datetime, tuple, dict]],
                        badge: str = __DEFAULT_BADGE,
-                       logger: Logger = PYPOMES_LOGGER) -> int:
+                       logger: Logger = None) -> int:
     r"""
     Schedule the jobs described in *jobs*, starting at the given timestamp.
 
@@ -280,7 +275,7 @@ def scheduler_add_jobs(errors: list[str] | None,
 def __get_scheduler(errors: list[str] | None,
                     badge: str,
                     must_exist: bool = True,
-                    logger: Logger = PYPOMES_LOGGER) -> _ThreadedScheduler:
+                    logger: Logger = None) -> _ThreadedScheduler:
     """
     Retrieve the scheduler identified by *badge*.
 
@@ -288,10 +283,10 @@ def __get_scheduler(errors: list[str] | None,
     :param badge: badge identifying the scheduler
     :param must_exist: True if scheduler must exist
     :param logger: optional logger
-    :return: the scheduler retrieved, or None otherwise
+    :return: the scheduler retrieved, or *None* otherwise
     """
     result: _ThreadedScheduler = __schedulers.get(badge)
-    if must_exist and result is None:
+    if must_exist and not result:
         err_msg: str = f"Job scheduler '{badge}' has not been created"
         if logger:
             logger.error(msg=err_msg)
@@ -310,14 +305,13 @@ def __scheduler_add_job(errors: list[str],
                         job_start: datetime = None,
                         job_args: tuple = None,
                         job_kwargs: dict = None,
-                        logger: Logger = PYPOMES_LOGGER) -> bool:
+                        logger: Logger = None) -> bool:
     r"""
     Use *scheduler* to schedule the job identified as *job_id* and named as *job_name*.
 
     The scheduling is performed with the *CRON* expression *job_cron*, starting at the timestamp *job_start*.
     Positional arguments for the scheduled job may be provided in *job_args*.
     Named arguments for the scheduled job may be provided in *job_kwargs*.
-    Return *True* if the scheduling was successful.
 
     :param errors: incidental errors
     :param scheduler: the scheduler to use
@@ -329,7 +323,7 @@ def __scheduler_add_job(errors: list[str],
     :param job_args: the positional arguments (*\*args*) to be passed to the job
     :param job_kwargs: the named arguments (*\*\*kwargs*) to be passed to the job
     :param logger: optional logger
-    :return: True if the job was successfully scheduled, or False otherwise
+    :return: *True* if the job was successfully scheduled, *False* otherwise
     """
     # initialize the return variable
     result: bool = False
