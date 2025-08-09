@@ -3,8 +3,7 @@ import sys
 from datetime import datetime
 from logging import Logger
 from pypomes_core import (
-    APP_PREFIX, TIMEZONE_LOCAL,
-    env_get_int, exc_format
+    APP_PREFIX, TZ_LOCAL, env_get_int, exc_format
 )
 from typing import Any, Final
 from zoneinfo import ZoneInfo
@@ -30,7 +29,7 @@ __schedulers: dict[str, Any] = {}
 def scheduler_create(errors: list[str] | None,
                      badge: str = __DEFAULT_BADGE,
                      is_daemon: bool = True,
-                     timezone: ZoneInfo = TIMEZONE_LOCAL,
+                     timezone: ZoneInfo = TZ_LOCAL,
                      retry_interval: int = SCHEDULER_RETRY_INTERVAL,
                      logger: Logger = None) -> bool:
     """
