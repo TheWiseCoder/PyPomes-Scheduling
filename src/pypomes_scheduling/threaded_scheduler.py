@@ -74,7 +74,12 @@ class _ThreadedScheduler(threading.Thread):
         """
         Schedule the given *job*, with the given parameters.
 
-        The CRON expression syntax is: <min> <hour> <day> <month> <day-of-week>
+        A valid *CRON* expression has the syntax *<min> <hour> <day> <month> <day-of-week>*, and can include:
+          - numbers (e.g. '5')
+          - ranges (e.g. '1-5')
+          - lists (e.g. '1,2,3')
+          - steps (e.g. '*/15')
+          - wildcards ('*')
 
         :param job: the callable object to be scheduled
         :param job_id: the id of the scheduled job
@@ -84,33 +89,11 @@ class _ThreadedScheduler(threading.Thread):
         :param job_args: the '*args' arguments to be passed to the scheduled job
         :param job_kwargs: the '**kwargs' arguments to be passed to the scheduled job
         """
-        # approximately, convert symbols to CRON expression
-        cron_expr: str | None
-        match job_cron:
-            case "@reboot":
-                cron_expr = "1 0 * * *"                      # daily, at 00h01
-            case "@midnight":
-                cron_expr = "0 0 * * *"                      # daily, at 00h00
-            case "@hourly":
-                cron_expr = "0 * * * *"                      # every hour, at minute 0 (??h00)
-            case "@daily":
-                cron_expr = "1 0 * * *"                      # daily, at 00h01
-            case "@weekly":
-                cron_expr = "0 0 * * 0"                      # on sundays, at 00h00
-            case "@monthly":
-                cron_expr = "0 0 1 * *"                      # on the first day of the month, at 00h00
-            case "@yearly" | "@annually":
-                cron_expr = "0 0 1 1 *"                      # on January 1st, at 00h00
-            case None:
-                cron_expr = None
-            case _:
-                cron_expr = job_cron
-
         aps_trigger: CronTrigger | None = None
         # has the CRON expression been defined ?
-        if cron_expr:
+        if job_cron:
             # yes, build the trigger
-            vals: list[str] = cron_expr.split()
+            vals: list[str] = job_cron.split()
             vals = [None if val == "?" else val for val in vals]
             aps_trigger = CronTrigger(minute=vals[0],
                                       hour=vals[1],
