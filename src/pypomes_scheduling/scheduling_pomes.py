@@ -13,9 +13,10 @@ from .threaded_scheduler import _ThreadedScheduler
 SCHEDULER_RETRY_INTERVAL: Final[int] = env_get_int(key=f"{APP_PREFIX}_SCHEDULER_RETRY_INTERVAL",
                                                    def_value=10)
 __DEFAULT_BADGE: Final[str] = "__default__"
-__REGEX_VERIFY_CRON: Final[str] = (
-    "/(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|"
-    "(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,7})"  # noqa: W605
+__REGEX_VERIFY_CRON: Final[re.Pattern] = re.compile(
+    r"(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|"
+    r"(@every\s+(\d+(ns|us|µs|ms|s|m|h))+)|"
+    r"((((\d+,)+\d+|(\d+[/\-]\d+)|\d+|\*)\s*){5,7})"
 )
 
 # dict holding the schedulers created:
@@ -323,8 +324,7 @@ def __scheduler_add_job(scheduler: _ThreadedScheduler,
 
     err_msg: str | None = None
     # has a valid CRON expression been provided ?
-    if job_cron and not re.search(pattern=__REGEX_VERIFY_CRON,
-                                  string=job_cron):
+    if job_cron and not __REGEX_VERIFY_CRON.fullmatch(string=job_cron):
         # no, report the error
         err_msg = f"Invalid CRON expression: '{job_cron}'"
     else:
