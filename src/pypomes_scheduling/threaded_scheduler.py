@@ -3,6 +3,7 @@ from datetime import datetime
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 from logging import Logger
+from typing import Callable
 from zoneinfo import ZoneInfo
 
 
@@ -64,7 +65,7 @@ class _ThreadedScheduler(threading.Thread):
         self.stopped = True
 
     def schedule_job(self,
-                     job: callable,
+                     job: Callable,
                      job_id: str,
                      job_name: str,
                      job_cron: str = None,
@@ -74,14 +75,16 @@ class _ThreadedScheduler(threading.Thread):
         """
         Schedule the given *job*, with the given parameters.
 
-        A valid *CRON* expression has the syntax *<min> <hour> <day> <month> <day-of-week>*, and can include:
+        A valid *CRON* expression has the syntax *[<sec>] <min> <hour> <day> <month> <day-of-week> [<year>]*,
+        where *sec* and <year> are optional, and can include:
           - numbers (e.g. '5')
           - ranges (e.g. '1-5')
           - lists (e.g. '1,2,3')
           - steps (e.g. '*/15')
+          - mnemonics (e.g. 'JAN', 'SUN')
           - wildcards ('*')
 
-        :param job: the callable object to be scheduled
+        :param job: the Callable object to be scheduled
         :param job_id: the id of the scheduled job
         :param job_name: the name of the scheduled job
         :param job_cron: the CRON expression directing the execution times
@@ -90,16 +93,18 @@ class _ThreadedScheduler(threading.Thread):
         :param job_kwargs: the '**kwargs' arguments to be passed to the scheduled job
         """
         aps_trigger: CronTrigger | None = None
-        # has the CRON expression been defined ?
         if job_cron:
-            # yes, build the trigger
+            # CRON expression has been defined, build the trigger
             vals: list[str] = job_cron.split()
             vals = [None if val == "?" else val for val in vals]
-            aps_trigger = CronTrigger(minute=vals[0],
-                                      hour=vals[1],
-                                      day=vals[2],
-                                      month=vals[3],
-                                      day_of_week=vals[4],
+            year: str = vals[6] if len(vals) == 7 else None
+            aps_trigger = CronTrigger(second=vals[0],
+                                      minute=vals[1],
+                                      hour=vals[2],
+                                      day=vals[3],
+                                      month=vals[4],
+                                      year=year,
+                                      day_of_week=vals[5],
                                       start_date=job_start)
         self.scheduler.add_job(func=job,
                                trigger=aps_trigger,

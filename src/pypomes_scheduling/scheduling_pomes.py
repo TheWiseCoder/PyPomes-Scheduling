@@ -5,7 +5,7 @@ from logging import Logger
 from pypomes_core import (
     APP_PREFIX, TZ_LOCAL, env_get_int, exc_format
 )
-from typing import Any, Final
+from typing import Any, Callable, Final
 from zoneinfo import ZoneInfo
 
 from .threaded_scheduler import _ThreadedScheduler
@@ -14,9 +14,46 @@ SCHEDULER_RETRY_INTERVAL: Final[int] = env_get_int(key=f"{APP_PREFIX}_SCHEDULER_
                                                    def_value=10)
 __DEFAULT_BADGE: Final[str] = "__default__"
 __REGEX_VERIFY_CRON: Final[re.Pattern] = re.compile(
-    r"(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|"
-    r"(@every\s+(\d+(ns|us|µs|ms|s|m|h))+)|"
-    r"((((\d+,)+\d+|(\d+[/\-]\d+)|\d+|\*)\s*){5,7})"
+    r"^("
+    r"@(annually|yearly|monthly|weekly|daily|hourly|reboot)|"
+    r"@every\s+\d+(ns|us|µs|ms|s|m|h)|"
+    r"("
+        # seconds: 0-59
+        r"((\*|([0-5]?\d)(-[0-5]?\d)?)(/[0-5]?\d)?"
+        r"(,([0-5]?\d)(-[0-5]?\d)?(/[0-5]?\d)?)*)\s+"
+
+        # minutes: 0-59
+        r"((\*|([0-5]?\d)(-[0-5]?\d)?)(/[0-5]?\d)?"
+        r"(,([0-5]?\d)(-[0-5]?\d)?(/[0-5]?\d)?)*)\s+"
+
+        # hours: 0-23
+        r"((\*|([01]?\d|2[0-3])(-([01]?\d|2[0-3]))?)(/[01]?\d|2[0-3])?"
+        r"(,([01]?\d|2[0-3])(-([01]?\d|2[0-3]))?(/[01]?\d|2[0-3])?)*)\s+"
+
+        # day of month: 1-31 or '?'
+        r"((\*|\?|([1-9]|[12]\d|3[01])(-([1-9]|[12]\d|3[01]))?)(/[1-9]|[12]\d|3[01])?"
+        r"(,([1-9]|[12]\d|3[01])(-([1-9]|[12]\d|3[01]))?(/[1-9]|[12]\d|3[01])?)*)\s+"
+
+        # month: 1-12 or JAN-DEC
+        r"((\*|([1-9]|1[0-2]|JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)"
+        r"(-([1-9]|1[0-2]|JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))?)"
+        r"(/[1-9]|1[0-2])?"
+        r"(,([1-9]|1[0-2]|JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)"
+        r"(-([1-9]|1[0-2]|JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))?"
+        r"(/[1-9]|1[0-2])?)*)\s+"
+
+        # day of week: 0-6 or SUN-SAT or '?'
+        r"((\*|\?|([0-6]|SUN|MON|TUE|WED|THU|FRI|SAT)"
+        r"(-([0-6]|SUN|MON|TUE|WED|THU|FRI|SAT))?)"
+        r"(/[0-6])?"
+        r"(,([0-6]|SUN|MON|TUE|WED|THU|FRI|SAT)"
+        r"(-([0-6]|SUN|MON|TUE|WED|THU|FRI|SAT))?"
+        r"(/[0-6])?)*)"
+
+        # year: 1970-2099 (optional)
+        r"(\s+(\*|19[7-9]\d|20\d\d)(-(19[7-9]\d|20\d\d))?)?"
+    r")"
+    r")$"
 )
 
 # dict holding the schedulers created:
@@ -46,7 +83,7 @@ def scheduler_create(badge: str = __DEFAULT_BADGE,
     :param logger: optional logger for logging the scheduler's operations
     :return: *True* if the scheduler was created, *False* otherwise
     """
-    # inicialize the return variable
+    # initialize the return variable
     result: bool = False
 
     # has the scheduler been created ?
@@ -160,7 +197,7 @@ def scheduler_stop(badge: str = __DEFAULT_BADGE,
     return result
 
 
-def scheduler_add_job(job: callable,
+def scheduler_add_job(job: Callable,
                       job_id: str,
                       job_name: str,
                       job_cron: str = None,
@@ -209,7 +246,7 @@ def scheduler_add_job(job: callable,
     return result
 
 
-def scheduler_add_jobs(jobs: list[tuple[callable, str, str, str, datetime, tuple, dict]],
+def scheduler_add_jobs(jobs: list[tuple[Callable, str, str, str, datetime, tuple, dict]],
                        badge: str = __DEFAULT_BADGE,
                        errors: list[str] = None,
                        logger: Logger = None) -> int:
@@ -217,7 +254,7 @@ def scheduler_add_jobs(jobs: list[tuple[callable, str, str, str, datetime, tuple
     Schedule the jobs described in *jobs*, starting at the given timestamp.
 
     Each element in the job list is a *tuple* with the following job data items:
-        - callable function: the function to be invoked by the scheduler (*callable*)
+        - Callable function: the function to be invoked by the scheduler (*Callable*)
         - job id: the id of the job to be started (*str*)
         - job name: the name of the job to be started (*str*)
         - start timestamp: the date and time to start scheduling the job (*datetime*)
@@ -241,7 +278,7 @@ def scheduler_add_jobs(jobs: list[tuple[callable, str, str, str, datetime, tuple
         # traverse the job list and attempt the scheduling
         for job in jobs:
             # process the required parameters
-            job_function: callable = job[0]
+            job_function: Callable = job[0]
             job_id: str = job[1]
             job_name: str = job[2]
 
@@ -250,7 +287,8 @@ def scheduler_add_jobs(jobs: list[tuple[callable, str, str, str, datetime, tuple
             job_start: datetime = job[4] if len(job) > 4 else None
             job_args: tuple = job[5] if len(job) > 5 else None
             job_kwargs: dict = job[6] if len(job) > 6 else None
-            # add to the return valiable, if scheduling was successful
+
+            # add to the return variable, if scheduling was successful
             if __scheduler_add_job(scheduler=scheduler,
                                    job=job_function,
                                    job_id=job_id,
@@ -291,7 +329,7 @@ def __get_scheduler(badge: str,
 
 
 def __scheduler_add_job(scheduler: _ThreadedScheduler,
-                        job: callable,
+                        job: Callable,
                         job_id: str,
                         job_name: str,
                         job_cron: str = None,
@@ -307,12 +345,26 @@ def __scheduler_add_job(scheduler: _ThreadedScheduler,
     Positional arguments for the scheduled job may be provided in *job_args*.
     Named arguments for the scheduled job may be provided in *job_kwargs*.
 
+    A valid *CRON* expression has the syntax *[<sec>] <min> <hour> <day> <month> <day-of-week> [<year>]*,
+    where *sec* and <year> are optional, and can include:
+      - numbers (e.g. '5')
+      - ranges (e.g. '1-5')
+      - lists (e.g. '1,2,3')
+      - steps (e.g. '*/15')
+      - mnemonics (e.g. 'JAN', 'SUN')
+      - wildcards ('*')
+      - ignored ('?' - *<day-of-week>* and *<day-of-month>*)
+    According to its length, the *CRON* expression may contain:
+      - 5: *<min> <hour> <day> <month> <day-of-week>*               (*<sec>* and *<year>* not specified)
+      - 6: *<sec> <min> <hour> <day> <month> <day-of-week>*         (*<year>* not specified)
+      - 7: *<sec> <min> <hour> <day> <month> <day-of-week> <year>*
+
     :param scheduler: the scheduler to use
     :param job: the job to be scheduled
     :param job_id: the id of the job to be scheduled
     :param job_name: the name of the job to be scheduled
     :param job_cron: the CRON expression
-    :param job_start: the date and time to start scheduling the the job
+    :param job_start: the date and time to start scheduling the job
     :param job_args: the positional arguments (*\*args*) to be passed to the job
     :param job_kwargs: the named arguments (*\*\*kwargs*) to be passed to the job
     :param errors: incidental error messages
@@ -322,31 +374,38 @@ def __scheduler_add_job(scheduler: _ThreadedScheduler,
     # initialize the return variable
     result: bool = False
 
+    # validate the CRON expression
     err_msg: str | None = None
-    # has a valid CRON expression been provided ?
-    if job_cron and not __REGEX_VERIFY_CRON.fullmatch(string=job_cron):
-        # no, report the error
-        err_msg = f"Invalid CRON expression: '{job_cron}'"
-    else:
-        # yes, proceed with the scheduling
+    cron_expr: str | None = None
+    if job_cron:
+        if len(job_cron.split()) == 5:
+            cron_expr = f"* {job_cron}"
+        else:
+            cron_expr = job_cron
+        if not __REGEX_VERIFY_CRON.fullmatch(string=cron_expr):
+            # bad CRON expression, report the error
+            err_msg = f"Invalid CRON expression: '{job_cron}'"
+            if logger:
+                logger.error(msg=err_msg)
+
+    # proceed with the scheduling
+    if not err_msg:
         try:
             scheduler.schedule_job(job=job,
                                    job_id=job_id,
                                    job_name=job_name,
-                                   job_cron=job_cron,
+                                   job_cron=cron_expr,
                                    job_start=job_start,
                                    job_args=job_args,
                                    job_kwargs=job_kwargs)
             result = True
         except Exception as e:
-            err_msg = (
-                f"Error scheduling the job '{job_name}', id '{job_id}', "
-                f"with CRON '{job_cron}': {exc_format(e, sys.exc_info())}"
-            )
-    if err_msg:
-        if logger:
-            logger.error(msg=err_msg)
-        if isinstance(errors, list):
-            errors.append(err_msg)
+            err_msg = (f"Error scheduling the job '{job_name}', id '{job_id}', "
+                       f"with CRON '{job_cron}': {exc_format(e, sys.exc_info())}")
+            if logger:
+                logger.error(msg=err_msg)
+
+    if err_msg and isinstance(errors, list):
+        errors.append(err_msg)
 
     return result
