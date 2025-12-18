@@ -1,9 +1,9 @@
 import threading
-from datetime import datetime
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
+from collections.abc import Callable
+from datetime import datetime
 from logging import Logger
-from typing import Callable
 from zoneinfo import ZoneInfo
 
 
