@@ -13,11 +13,12 @@ class _ThreadedScheduler(threading.Thread):
 
     This implementation may run as single or multiple instances, each instance on its own thread.
     """
+    # the class logger
+    LOGGER: Logger | None = None
 
     def __init__(self,
                  timezone: ZoneInfo,
-                 retry_interval: int,
-                 logger: Logger = None) -> None:
+                 retry_interval: int) -> None:
         """
         Initialize the scheduler.
 
@@ -26,19 +27,17 @@ class _ThreadedScheduler(threading.Thread):
 
         :param timezone: the reference timezone in job timestamps
         :param retry_interval: interval between retry attempts, in minutes
-        :param logger: optional logger to use for logging the scheduler's operations
         """
         threading.Thread.__init__(self)
 
         # instance attributes
         self.stopped: bool = False
-        self.logger: Logger = logger
-        self.scheduler: BlockingScheduler = BlockingScheduler(logging=logger,
+        self.scheduler: BlockingScheduler = BlockingScheduler(logging=_ThreadedScheduler.LOGGER,
                                                               timezone=timezone,
                                                               jobstore_retry_interval=retry_interval)
-        if self.logger:
-            self.logger.debug(msg=(f"Instanced, with timezone '{timezone}' "
-                                   f"and retry interval '{retry_interval}'"))
+        if _ThreadedScheduler.LOGGER:
+            _ThreadedScheduler.LOGGER.debug(msg=f"Instanced, with timezone '{timezone}' "
+                                                f"and retry interval '{retry_interval}'")
 
     def run(self) -> None:
         """
@@ -46,22 +45,22 @@ class _ThreadedScheduler(threading.Thread):
         """
         # stay in loop until 'stop()' is invoked
         while not self.stopped:
-            if self.logger:
-                self.logger.debug("Started")
+            if _ThreadedScheduler.LOGGER:
+                _ThreadedScheduler.LOGGER.debug("Started")
 
             # start the scheduler, blocking the thread until it is interrupted
             self.scheduler.start()
 
         self.scheduler.shutdown()
-        if self.logger:
-            self.logger.debug("Finished")
+        if _ThreadedScheduler.LOGGER:
+            _ThreadedScheduler.LOGGER.debug("Finished")
 
     def stop(self) -> None:
         """
         Stop the scheduler.
         """
-        if self.logger:
-            self.logger.debug("Stopping...")
+        if _ThreadedScheduler.LOGGER:
+            _ThreadedScheduler.LOGGER.debug("Stopping...")
         self.stopped = True
 
     def schedule_job(self,
@@ -112,5 +111,14 @@ class _ThreadedScheduler(threading.Thread):
                                kwargs=job_kwargs,
                                id=job_id,
                                name=job_name)
-        if self.logger:
-            self.logger.debug(msg=f"Job '{job_name}' scheduled, with CRON '{job_cron}'")
+        if _ThreadedScheduler.LOGGER:
+            _ThreadedScheduler.LOGGER.debug(msg=f"Job '{job_name}' scheduled, with CRON '{job_cron}'")
+
+    @staticmethod
+    def set_logger(logger: Logger) -> None:
+        """
+        Establish the class logger.
+
+        :param logger: the class logger
+        """
+        _ThreadedScheduler.LOGGER = logger
